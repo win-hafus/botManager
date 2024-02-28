@@ -1,23 +1,52 @@
-const express = require("express");
-const axios = require("axios");
-const path = require("path")
+// const express = require("express");
+// const axios = require("axios");
+// const path = require("path")
+
+const TelegramBot = require('node-telegram-bot-api');
+
 
 require('dotenv').config();
-const { Telegraf } = require('telegraf');
+const bot = new TelegramBot(process.env.BOT_TOKEN, {polling: true})
 
-const port = process.env.PORT || 3000;
-const expressApp = express();
+bot.onText(/\/echo (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const resp = match[1];
 
-expressApp.use(express.static('static'));
-expressApp.use(express.json());
-
-const bot = new Telegraf(process.env.BOT_TOKEN);
-expressApp.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname + '/index.html'));
+  bot.sendMessage(chatId, resp);
 });
-bot.launch();
 
-bot.command("start", (ctx) => {
-  console.log(ctx.from)
-  bot.telegram.sendMessage(ctx.chat.id, "Пошел нахуй")
+// test inline-menu
+
+
+
+
+bot.onText(/\/another/, (msg) => {
+  const opts = {
+    reply_markup: JSON.stringify({
+      inline_keyboard: [
+        [
+          {text: "Poshel nahui", callback_data: "N"},
+          {text: "Yeah, daddy", callback_data: "Y"}
+        ],
+      ]
+    })
+  }
+  bot.sendMessage(msg.chat.id, "Do been a fucking slave?", opts);
 });
+
+bot.on("callback_query", async (quar) => {
+  console.log(quar);
+  const chatId = quar.from.id;
+  if(quar.data == "Y") {
+    const namePrompt = await bot.sendMessage(chatId, "Hi, what's your name?", {
+        reply_markup: {
+            force_reply: true,
+        },
+    });
+    bot.onReplyToMessage(chatId, namePrompt.message_id, async (nameMsg) => {
+        const name = nameMsg.text;
+        await bot.sendMessage(chatId, `Hello ${name}!`);
+    });
+  }
+})
+
